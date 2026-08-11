@@ -28,6 +28,14 @@ class WalletStore(context: Context) {
     private val appContext = context.applicationContext
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    // H6 — the vault key now requires a recent user authentication. The store
+    // keeps a weak reference to the current activity so a save that falls
+    // outside the auth window can prompt for re-authentication instead of
+    // failing. Set on unlock and on setup; never leaks (weak).
+    private var activityRef: java.lang.ref.WeakReference<FragmentActivity>? = null
+    fun bindActivity(activity: FragmentActivity) { activityRef = java.lang.ref.WeakReference(activity) }
+    private fun boundActivity(): FragmentActivity? = activityRef?.get()
+
     var phase by mutableStateOf(Phase.LOADING)
         private set
     var accounts by mutableStateOf<List<Account>>(emptyList())
@@ -258,7 +266,30 @@ class WalletStore(context: Context) {
 
     fun saveAccounts() {
         if (phase != Phase.UNLOCKED) throw Vault.VaultException("Wallet is locked.")
-        Vault.saveVault(appContext, payloadData())
+        try {
+            Vault.saveVault(appContext, payloadData())
+        } catch (e: android.security.keystore.UserNotAuthenticatedException) {
+            // H6 — the auth window lapsed between operations. Re-prompt through
+            // the bound activity, then retry the save once. If no activity is
+            // bound we cannot prompt, so surface a clear, catchable error
+            // rather than silently losing the write.
+            val act = boundActivity()
+                ?: throw Vault.VaultException("Authentication expired — reopen the wallet to save changes.")
+            scope.launch {
+                try {
+                    Vault.authenticate(act, "Confirm to save wallet changes")
+                    withContext(Dispatchers.IO) { Vault.saveVault(appContext, payloadData()) }
+                } catch (_: Exception) { /* surfaced by the calling flow's own error handling */ }
+            }
+        }
+    }
+
+    /** Authenticate (fresh window) and save — used by create/import where the
+     *  very first encrypt must be authorised before any vault write. */
+    suspend fun authenticateAndSave(activity: FragmentActivity, reason: String) {
+        bindActivity(activity)
+        Vault.authenticate(activity, reason)
+        withContext(Dispatchers.IO) { Vault.saveVault(appContext, payloadData()) }
     }
 
     private suspend fun apply(stored: List<JSONObject>, activeIdx: Int) {
@@ -278,6 +309,7 @@ class WalletStore(context: Context) {
     }
 
     suspend fun unlock(activity: FragmentActivity) {
+        bindActivity(activity)
         Vault.authenticate(activity, "Unlock your ORD/net wallet")
         val data = withContext(Dispatchers.IO) { Vault.readVault(appContext) }
         val (stored, activeIdx) = VaultPayload.decode(data)
@@ -355,7 +387,7 @@ class WalletStore(context: Context) {
 
     // MARK: - create / import
 
-    suspend fun createWallet(mnemonic: String, accountName: String) {
+    suspend fun createWallet(activity: FragmentActivity, mnemonic: String, accountName: String) {
         if (!engine.validateMnemonic(mnemonic)) {
             throw WalletEngine.EngineException("Recovery phrase missing — go back and try again.")
         }
@@ -368,7 +400,8 @@ class WalletStore(context: Context) {
         sessionPhrases[addr] = mnemonic
         active = 0
         phase = Phase.UNLOCKED
-        saveAccounts()
+        // H6 — authorise the first encrypt before writing the vault.
+        authenticateAndSave(activity, "Set up your ORD/net wallet")
     }
 
     data class ImportResult(
@@ -412,7 +445,7 @@ class WalletStore(context: Context) {
         }
     }
 
-    suspend fun importWallet(r: ImportResult, accountName: String) {
+    suspend fun importWallet(activity: FragmentActivity, r: ImportResult, accountName: String) {
         val addr = engine.wifToAddress(r.wif)
         accounts = listOf(Account(
             name = accountName.ifEmpty { "Account 1" },
@@ -421,7 +454,8 @@ class WalletStore(context: Context) {
         if (r.phrase != null) sessionPhrases[addr] = r.phrase
         active = 0
         phase = Phase.UNLOCKED
-        saveAccounts()
+        // H6 — authorise the first encrypt before writing the vault.
+        authenticateAndSave(activity, "Set up your ORD/net wallet")
     }
 
     // MARK: - accounts
@@ -858,7 +892,53 @@ class WalletStore(context: Context) {
         brc100Grants = brc100Grants + grantKey
     }
 
-    // MARK: - BRC-100 grants manager (Settings)
+    /**
+     * H7 (external audit, 11 Aug 2026) — listActions / listOutputs leak
+     * private data (full history / all UTXOs). They carry no protocolID, so
+     * requireBrc100Permission cannot gate them; this is a dedicated per-origin
+     * consent (persistent grant, revocable in Settings) that must be granted
+     * before any wallet data is returned. Previously these ran ungated: a
+     * single page visit read the whole wallet.
+     */
+    suspend fun requireBrc100ReadConsent(origin: String, method: String) {
+        val grantKey = "$address|$origin|read|$method"
+        if (brc100Grants.contains(grantKey)) return
+        val title = if (method == "listActions") "Share transaction history" else "Share wallet outputs"
+        val detail = if (method == "listActions")
+            "The app asks to read this wallet's BRC-100 action history."
+        else "The app asks to list this wallet's spendable outputs (UTXOs)."
+        val deferred = kotlinx.coroutines.CompletableDeferred<Boolean>()
+        pendingBrc100Permission = Brc100PermissionRequest(
+            origin = origin.ifEmpty { "unknown app" },
+            title = title, detail = detail, deferred = deferred)
+        val approved = deferred.await()
+        if (!approved) {
+            throw Brc100.Err("WERR_PERMISSION_DENIED", 1,
+                "The user denied ${title.lowercase()} for $origin.")
+        }
+        brc100Grants = brc100Grants + grantKey
+    }
+
+    /**
+     * H7 — relinquishOutput permanently removes an output from funding. It is
+     * destructive and must never be a silent, loopable call: a page could walk
+     * every UTXO and brick the wallet's spendability. This requires a fresh
+     * biometric confirmation for each call (money-grade, not a persistent
+     * grant), naming the outpoint.
+     */
+    suspend fun requireBrc100Relinquish(origin: String, outpoint: String) {
+        val act = boundActivity()
+            ?: throw Brc100.Err("WERR_PERMISSION_DENIED", 1,
+                "relinquishOutput needs confirmation but no active screen is available.")
+        try {
+            Vault.authenticate(act,
+                "Stop managing an output",
+                "$origin wants to drop $outpoint from this wallet. It will no longer be spendable here.")
+        } catch (e: Exception) {
+            throw Brc100.Err("WERR_PERMISSION_DENIED", 1,
+                "The user did not confirm relinquishing $outpoint.")
+        }
+    }
 
     /**
      * decode the stored grant keys for the ACTIVE address into rows the

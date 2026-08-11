@@ -1,6 +1,8 @@
-# ORDnet Wallet — Android app (v3.3)
+# ORDnet Wallet — Android app (v3.4)
 
-Full native Android version of the **ORDnet Web3 Browser / ORDnet Wallet** — the 1-to-1 counterpart of the iOS app (v2.6.0) and the Chrome extension (V40). Not a wrapper: the entire UI is Jetpack Compose; only the proven crypto engine (`bsv.min.js` + `wallet-core.js` + `bsv-sdk-bundle.js`, **byte-identical copies** of the iOS/extension files) runs invisibly in a network-isolated WebView JS VM, so every transaction is byte-for-byte identical to the extension and the iOS app.
+Full native Android version of the **ORDnet Web3 Browser / ORDnet Wallet** — the counterpart of the iOS app and the Chrome extension. Not a wrapper: the entire UI is Jetpack Compose; the crypto engine (`bsv.min.js` + `wallet-core.js` + `bsv-sdk-bundle.js`) runs invisibly in a network-isolated WebView JS VM.
+
+On the engine: `wallet-core.js`, `bsv.min.js` and `bsv-sdk-bundle.js` are **byte-identical to the iOS app's copies**, and the two vendored libraries are byte-identical to the Chrome extension's as well. `brc100-shim.js` differs between the two mobile apps, and the extension does not use `wallet-core.js` at all — its wallet logic is a separate implementation in `src/wallet.js`. So transactions built here are byte-for-byte identical to the iOS app's; against the extension the shared ground is the vendored libraries and a common set of conformance vectors, not the same file.
 
 ## Requirements
 
@@ -21,7 +23,7 @@ Full native Android version of the **ORDnet Web3 Browser / ORDnet Wallet** — t
 | Layer | Technology | Origin |
 |---|---|---|
 | UI | 100% native Jetpack Compose (Kotlin) | 1-to-1 port of the SwiftUI views; same ORDnet colors, capsule buttons and inline alerts |
-| Crypto engine | `bsv.min.js` + `wallet-core.js` in an invisible, network-blocked WebView JS VM | **byte-identical to iOS/extension**: fees, tx building, BIP39/44, atomic swaps |
+| Crypto engine | `bsv.min.js` + `wallet-core.js` in an invisible, network-blocked WebView JS VM | **byte-identical to iOS**; shares the vendored libraries and conformance vectors with the extension |
 | Key storage | Android Keystore (hardware-backed AES-256-GCM) + BiometricPrompt | counterpart of iOS Keychain + Face ID (see security notes) |
 | Network | OkHttp (WhatsOnChain, bsvmap.io, domains.ordnet.io) | same endpoints, incl. 429 backoff and tx-hex cache |
 | .web3 browser | WebView + `shouldInterceptRequest` router (`ordweb3://`) | replaces the WKURLSchemeHandler / service-worker router (sw.js) |

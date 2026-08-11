@@ -237,7 +237,13 @@ class BrowserModel(context: Context, val store: WalletStore) {
         val method = body.optString("method")
         if (id.isEmpty() || method.isEmpty()) return
         val argsJson = body.optString("args").ifEmpty { "{}" }
-        val originator = body.optString("originator")
+        // H4 (external audit, 11 Aug 2026) — the originator MUST be the real
+        // page origin, not a value the page supplies. Grants and daily budgets
+        // key on `address|origin|level|protocol`, so a page passing
+        // `originator: "https://trusted.dapp"` inherited that dApp's grants and
+        // budget. The window.ordplug path already uses currentOrigin; use it
+        // here too and ignore the page-supplied field.
+        val originator = currentOrigin
         try {
             val result = Brc100.handle(method = method, argsJson = argsJson,
                 originator = originator, store = store)

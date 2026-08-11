@@ -65,7 +65,7 @@ fun RootView(store: WalletStore, activity: AppCompatActivity) {
         WalletStore.Phase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = Theme.ink())
         }
-        WalletStore.Phase.SETUP -> SetupView(store)
+        WalletStore.Phase.SETUP -> SetupView(store, activity)
         WalletStore.Phase.LOCKED -> UnlockView(store, activity)
         WalletStore.Phase.UNLOCKED -> MainTabView(store, activity)
     }
@@ -74,6 +74,9 @@ fun RootView(store: WalletStore, activity: AppCompatActivity) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTabView(store: WalletStore, activity: AppCompatActivity) {
+    // H6 — keep the store's activity binding current so a save outside the
+    // auth window can re-prompt (e.g. after fresh setup, or a long session).
+    androidx.compose.runtime.LaunchedEffect(activity) { store.bindActivity(activity) }
     var tab by rememberSaveable { mutableStateOf(0) }
     val stateHolder = rememberSaveableStateHolder()
     // the browser (and its WebView) survives tab switches, like the iOS TabView

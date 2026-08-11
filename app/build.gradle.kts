@@ -12,8 +12,8 @@ android {
         applicationId = "io.ordnet.wallet"
         minSdk = 26
         targetSdk = 36
-        versionCode = 330
-        versionName = "3.3"
+        versionCode = 340
+        versionName = "3.4"
     }
 
     buildTypes {

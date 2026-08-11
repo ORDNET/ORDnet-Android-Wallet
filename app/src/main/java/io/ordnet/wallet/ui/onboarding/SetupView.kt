@@ -1,5 +1,7 @@
 package io.ordnet.wallet.ui.onboarding
 
+import androidx.fragment.app.FragmentActivity
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -58,12 +60,12 @@ import org.json.JSONObject
  * presets / legacy / WIF import with address preview.
  */
 @Composable
-fun SetupView(store: WalletStore) {
+fun SetupView(store: WalletStore, activity: FragmentActivity) {
     var screen by remember { mutableStateOf("landing") }
 
     when (screen) {
-        "create" -> CreateWalletView(store, onBack = { screen = "landing" })
-        "import" -> ImportWalletView(store, onBack = { screen = "landing" })
+        "create" -> CreateWalletView(store, activity, onBack = { screen = "landing" })
+        "import" -> ImportWalletView(store, activity, onBack = { screen = "landing" })
         else -> SetupLanding(
             onCreate = { screen = "create" },
             onImport = { screen = "import" }
@@ -118,7 +120,7 @@ private fun SetupLanding(onCreate: () -> Unit, onImport: () -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CreateWalletView(store: WalletStore, onBack: () -> Unit) {
+fun CreateWalletView(store: WalletStore, activity: FragmentActivity, onBack: () -> Unit) {
     var mnemonic by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("—") }
     var name by remember { mutableStateOf("") }
@@ -143,7 +145,7 @@ fun CreateWalletView(store: WalletStore, onBack: () -> Unit) {
         error = ""
         scope.launch {
             try {
-                store.createWallet(mnemonic, name)
+                store.createWallet(activity, mnemonic, name)
                 store.refreshBalance()
             } catch (e: Exception) {
                 error = e.message ?: "Could not create the wallet."
@@ -212,7 +214,7 @@ fun CreateWalletView(store: WalletStore, onBack: () -> Unit) {
 val importSegments = listOf("BIP44", "Other wallet", "Legacy", "WIF")
 
 @Composable
-fun ImportWalletView(store: WalletStore, onBack: () -> Unit) {
+fun ImportWalletView(store: WalletStore, activity: FragmentActivity, onBack: () -> Unit) {
     var seg by remember { mutableStateOf(0) }
     var mnemonic by remember { mutableStateOf("") }
     var wifInput by remember { mutableStateOf("") }
@@ -296,7 +298,7 @@ fun ImportWalletView(store: WalletStore, onBack: () -> Unit) {
                     )
                 }
                 val r = store.resolveImport(mode, mnemonic, wifInput, presetPath = path, pin = pinVal)
-                store.importWallet(r, name)
+                store.importWallet(activity, r, name)
                 store.refreshBalance()
             } catch (e: Exception) {
                 error = e.message ?: "Import failed."

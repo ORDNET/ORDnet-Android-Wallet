@@ -18,6 +18,39 @@ Dates are build dates taken from the archive files.
 
 ---
 
+## [3.4] — 2026-08-11 (versionCode 340) — external security audit
+
+An external review of all ORDnet repositories on 11 August 2026 reported four
+high-severity findings in this app. Full detail in
+[SECURITY-FIXES-audit-2026-08-11.md](SECURITY-FIXES-audit-2026-08-11.md).
+
+### Security
+
+- **H6 — the vault key required no authentication.** The Keystore key was
+  created without `setUserAuthenticationRequired`, so the biometric prompt was
+  UI only: any path that reached `readVault()` without calling `authenticate()`
+  decrypted the wallet anyway. The key now requires authentication, with a
+  short validity window (biometric or device credential) rather than a
+  per-operation CryptoObject — unlocking once covers the operations that
+  follow, while a cold read with no recent authentication is refused by the
+  Keystore itself. `createWallet` and `importWallet` authenticate before
+  saving; `saveAccounts` re-authenticates on `UserNotAuthenticatedException`.
+- **H4 — BRC-100 trusted a page-supplied originator.** A page could pass
+  `originator: "https://trusted.dapp"` and inherit that dApp's grants and
+  budget. The originator is now the real origin of the active page, matching
+  the `window.ordplug` path.
+- **H7 — read methods had no per-origin consent.** `listActions` and
+  `listOutputs` now require consent per origin; `relinquishOutput`, which is
+  destructive, requires a confirmation on every call.
+
+### Fixed
+
+- Parity drift against iOS in account removal and wallet reset, found while
+  fixing the above.
+
+---
+
+
 ## [3.3] — 2026-08-06 (versionCode 330) — iOS v2.6.1/v2.6.2 parity
 
 ### Fixed

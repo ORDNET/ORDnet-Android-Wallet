@@ -69,9 +69,9 @@ object Brc100 {
             // ---- fase 3: geld — per-transactie biometrie, geld ≠ grant ----
             method == "createAction" -> createAction(argsJson, originator, store)
             method == "internalizeAction" -> internalizeAction(argsJson, originator, store)
-            method == "listActions" -> listActions(argsJson, store)
-            method == "listOutputs" -> listOutputs(argsJson, store)
-            method == "relinquishOutput" -> relinquishOutput(argsJson, store)
+            method == "listActions" -> listActions(argsJson, originator, store)
+            method == "listOutputs" -> listOutputs(argsJson, originator, store)
+            method == "relinquishOutput" -> relinquishOutput(argsJson, originator, store)
             method == "signAction" ->
                 // regel 1: het signableTransaction-pad bestaat pas als het er ECHT is
                 throw Err("WERR_UNSUPPORTED_ACTION", 2,
@@ -235,8 +235,9 @@ object Brc100 {
 
     /** listActions from the local action log (only actions made via this app —
      *  documented, honest scope; filters per BRC-100 any/all) */
-    private fun listActions(argsJson: String, store: WalletStore?): JSONObject {
+    private suspend fun listActions(argsJson: String, originator: String, store: WalletStore?): JSONObject {
         val s = unlockedStore(store)
+        s.requireBrc100ReadConsent(originator, "listActions") // H7
         val args = try { JSONObject(argsJson) } catch (e: Exception) { JSONObject() }
         var actions = s.brc100Actions()
         val labelsArr = args.optJSONArray("labels")
@@ -273,8 +274,9 @@ object Brc100 {
 
     /** listOutputs over the live, ordinal-protected UTXO set ('default'
      *  basket) — foreign baskets/tags refuse explicitly in the engine */
-    private suspend fun listOutputs(argsJson: String, store: WalletStore?): JSONObject {
+    private suspend fun listOutputs(argsJson: String, originator: String, store: WalletStore?): JSONObject {
         val s = unlockedStore(store)
+        s.requireBrc100ReadConsent(originator, "listOutputs") // H7
         val utxos = s.utxos()
         val v = requireValid(s.engine.dict("brc100ListOutputs", s.engine.args(
             "utxos" to utxos.toString(), "argsJson" to argsJson)))
@@ -285,7 +287,7 @@ object Brc100 {
 
     /** relinquishOutput: release an existing outpoint from the 'default'
      *  basket — persistently excluded from funding; unknown outpoints refuse */
-    private suspend fun relinquishOutput(argsJson: String, store: WalletStore?): JSONObject {
+    private suspend fun relinquishOutput(argsJson: String, originator: String, store: WalletStore?): JSONObject {
         val s = unlockedStore(store)
         val args = try { JSONObject(argsJson) } catch (e: Exception) { JSONObject() }
         val basket = args.optString("basket").ifEmpty { "default" }
@@ -308,6 +310,7 @@ object Brc100 {
             throw Err("WERR_INVALID_PARAMETER", 3,
                 "relinquishOutput: outpoint $outpoint is not a spendable output of this wallet.")
         }
+        s.requireBrc100Relinquish(originator, outpoint) // H7 — destructive, per-call confirm
         s.brc100Relinquish(outpoint)
         return JSONObject().put("relinquished", true)
     }
