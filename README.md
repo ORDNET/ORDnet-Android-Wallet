@@ -12,7 +12,7 @@ On the engine: `wallet-core.js`, `bsv.min.js` and `bsv-sdk-bundle.js` are **byte
 
 ## Build & run
 
-1. Open the `ORDplugAndroid` folder in Android Studio (File → Open).
+1. Open the repository root in Android Studio (File → Open) — the root itself is the Gradle project.
 2. Wait for the Gradle sync to finish (dependencies are downloaded automatically).
 3. Pick your device or emulator and press **Run ▶** (or `./gradlew assembleDebug` for an APK in `app/build/outputs/apk/debug/`).
 
@@ -48,7 +48,7 @@ Why a WebView as JS VM and not `androidx.javascriptengine`? Android's JS sandbox
 - ORD/ner (v3.2): on-chain file browser — accounts are folders, grid/list view with image thumbnails, file detail with preview, Open in Browser, Copy TX info and Send (1Sat ordinal transfer); the app's inscription log supplies filenames and "sent" labels
 - UTXO tools (v3.2): split (N × X sats) and combine (all spendable UTXOs → one output) on the ordinal-protected set, with the standard service fees; plus an app-wide chain mechanism (own change/split outputs usable immediately, spent-guard, conflict recovery) so consecutive transactions never starve for funding
 - BRC-100 (v3.2, fase 1–3): key-free window.CWI shim (detectable by @bsv/sdk WalletClient('auto')), fase-1 info methods, fase-2 keys/crypto via the bundled ProtoWallet behind BRC-43 grants with native biometric sheets, fase-3 money (outputs-only createAction, internalizeAction, listOutputs/listActions, relinquishOutput) with a per-transaction native confirmation (money ≠ grant) and a grants manager in Settings — every unsupported method rejects explicitly with a standards-shaped WERR_* error
-- Service fees (3,996 sats across 11 addresses) and fee rate (0.15 sat/byte) identical to the extension
+- Service fees (**3,996 sats** across 11 outputs to 10 addresses) and fee rate (0.15 sat/byte) identical to the extension and the iOS app. The MCP server and ORDmail run a deliberately reduced **agent tier** at one tenth of this (396 sats over the same split), because an agent inscribes far more often than a person does.
 - Auto-lock (5/15/60 min or never), lock button, wallet removal with double confirmation
 
 ## Verification
@@ -67,7 +67,7 @@ npm i @bsv/sdk && node Tests/brc100-detect-test.mjs
 
 ## Play Store submission
 
-- Version: 3.3 (versionCode 330), application id `io.ordnet.wallet` — see `CHANGELOG.md`
+- Version: 3.4 (versionCode 340), application id `io.ordnet.wallet` — see `CHANGELOG.md`
 - `ic_launcher-playstore.png` (512×512) in the project root is the store listing icon
 - `android:allowBackup="false"` + full backup/transfer exclusion: keys never leave the device
 - Data safety form: no data collection, no tracking, no ads
