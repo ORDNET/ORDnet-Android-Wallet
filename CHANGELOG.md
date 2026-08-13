@@ -18,6 +18,32 @@ Dates are build dates taken from the archive files.
 
 ---
 
+## [3.4.1] — 2026-08-13 (versionCode 341) — audit round 2
+
+Second round of the external review. Full detail in
+[SECURITY-FIXES-v3.4.1.md](SECURITY-FIXES-v3.4.1.md).
+
+### Security
+
+- **Escaping drift in `flushPendingFragment`.** `deliver()` and
+  `deliverBrc100()` escape U+2028/U+2029 before handing JSON to
+  `evaluateJavascript`, but `flushPendingFragment` did not — even though iOS
+  fixed exactly this path in v2.7.0 with the note "Android escaped this; iOS
+  did not." The drift now ran the other way. The fragment arrives from the
+  page in an `ordnetNavigate` message — attacker-controlled input reaching a
+  JavaScript string literal, the same class as the iOS H5 finding. The same
+  escaping helper now covers all three delivery paths.
+
+### Added
+
+- CI workflow running `./gradlew assembleDebug` — which at least catches what
+  a missing brace in `Vault.kt` cost on 11 August.
+
+### Known issue (documented, not fixed)
+
+- Native test coverage: the 69 tests are JavaScript engine tests; `Vault`,
+  the biometric flow and the WebView bridges have no Kotlin unit tests yet.
+
 ## [3.4] — 2026-08-11 (versionCode 340) — external security audit
 
 An external review of all ORDnet repositories on 11 August 2026 reported four

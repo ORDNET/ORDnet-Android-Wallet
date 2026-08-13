@@ -1,4 +1,4 @@
-# ORDnet Wallet — Android app (v3.4)
+# ORDnet Wallet — Android app (v3.4.1)
 
 Full native Android version of the **ORDnet Web3 Browser / ORDnet Wallet** — the counterpart of the iOS app and the Chrome extension. Not a wrapper: the entire UI is Jetpack Compose; the crypto engine (`bsv.min.js` + `wallet-core.js` + `bsv-sdk-bundle.js`) runs invisibly in a network-isolated WebView JS VM.
 
@@ -28,6 +28,8 @@ On the engine: `wallet-core.js`, `bsv.min.js` and `bsv-sdk-bundle.js` are **byte
 | Network | OkHttp (WhatsOnChain, bsvmap.io, domains.ordnet.io) | same endpoints, incl. 429 backoff and tx-hex cache |
 | .web3 browser | WebView + `shouldInterceptRequest` router (`ordweb3://`) | replaces the WKURLSchemeHandler / service-worker router (sw.js) |
 | dApp API | `window.ordplug` provider via `addJavascriptInterface` + native approval sheets | same method set as inpage.js / the iOS provider |
+
+`window.ordplug.version` reports `1.0.0` — the version of the provider *API*, deliberately identical across the Chrome, iOS and Android wallets and independent of the app version.
 
 Why a WebView as JS VM and not `androidx.javascriptengine`? Android's JS sandbox cannot bind native functions to JS and has no `crypto.getRandomValues`. The (never shown, never loading) WebView provides a full V8 with real OS entropy for `crypto.getRandomValues` — exactly what JavaScriptCore offered on iOS — while all network requests from the engine are hard-blocked (`blockNetworkLoads` + request interceptor).
 
@@ -67,7 +69,7 @@ npm i @bsv/sdk && node Tests/brc100-detect-test.mjs
 
 ## Play Store submission
 
-- Version: 3.4 (versionCode 340), application id `io.ordnet.wallet` — see `CHANGELOG.md`
+- Version: 3.4.1 (versionCode 341), application id `io.ordnet.wallet` — see `CHANGELOG.md`
 - `ic_launcher-playstore.png` (512×512) in the project root is the store listing icon
 - `android:allowBackup="false"` + full backup/transfer exclusion: keys never leave the device
 - Data safety form: no data collection, no tracking, no ads
