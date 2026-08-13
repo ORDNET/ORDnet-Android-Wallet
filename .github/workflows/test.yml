@@ -1,0 +1,39 @@
+name: engine tests & Android build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    name: JS engine tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run JS engine tests
+        run: node Tests/engine-tests.mjs
+
+  android:
+    name: Gradle assembleDebug
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', 'gradle/wrapper/gradle-wrapper.properties') }}
+      # This is the job that would have caught the missing brace in Vault.kt.
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
