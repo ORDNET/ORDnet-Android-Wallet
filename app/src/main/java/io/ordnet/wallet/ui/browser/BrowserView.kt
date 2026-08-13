@@ -412,8 +412,18 @@ class BrowserModel(context: Context, val store: WalletStore) {
         val frag = pendingFragment
         pendingFragment = ""
         view.postDelayed({
+            // U+2028 and U+2029 terminate a line inside a JavaScript string
+            // literal, so escaping only backslash and quote leaves a way out —
+            // the same gap iOS closed in v2.7.0 with the note "Android escaped
+            // this; iOS did not". deliver() and deliverBrc100() in this file
+            // already handle them; this path did not.
+            val safeFrag = frag
+                .replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\u2028", "\\u2028")
+                .replace("\u2029", "\\u2029")
             val js = """
-                (function(){ try{ var id=decodeURIComponent('${frag.replace("\\", "\\\\").replace("'", "\\'")}'.substring(1));
+                (function(){ try{ var id=decodeURIComponent('${safeFrag}'.substring(1));
                 var el=document.getElementById(id)||document.querySelector('[name="'+id+'"]');
                 if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){} })();
             """.trimIndent()
