@@ -1,5 +1,11 @@
 # ORDnet Wallet — Android app (v3.4.1)
 
+[![engine tests & build](https://github.com/ORDNET/ORDnet-Android-Wallet/actions/workflows/test.yml/badge.svg)](https://github.com/ORDNET/ORDnet-Android-Wallet/actions/workflows/test.yml)
+[![test count](https://img.shields.io/badge/engine_tests-69_passing-2b8a3e?style=flat-square)](#tests)
+[![platform](https://img.shields.io/badge/platform-Android_%C2%B7_Jetpack_Compose-364fc7?style=flat-square)](#requirements)
+[![engine](https://img.shields.io/badge/crypto_engine-byte--identical_with_iOS-5f3dc4?style=flat-square)](https://github.com/ORDNET/ORDnet-iOS-Wallet)
+[![license](https://img.shields.io/badge/license-source--available-6a737d?style=flat-square)](LICENSE)
+
 Full native Android version of the **ORDnet Web3 Browser / ORDnet Wallet** — the counterpart of the iOS app and the Chrome extension. Not a wrapper: the entire UI is Jetpack Compose; the crypto engine (`bsv.min.js` + `wallet-core.js` + `bsv-sdk-bundle.js`) runs invisibly in a network-isolated WebView JS VM.
 
 On the engine: `wallet-core.js`, `bsv.min.js` and `bsv-sdk-bundle.js` are **byte-identical to the iOS app's copies**, and the two vendored libraries are byte-identical to the Chrome extension's as well. `brc100-shim.js` differs between the two mobile apps, and the extension does not use `wallet-core.js` at all — its wallet logic is a separate implementation in `src/wallet.js`. So transactions built here are byte-for-byte identical to the iOS app's; against the extension the shared ground is the vendored libraries and a common set of conformance vectors, not the same file.
@@ -86,8 +92,15 @@ npm i @bsv/sdk && node Tests/brc100-detect-test.mjs
 
 ## Tests
 
-`Tests/engine-tests.mjs` runs the full crypto-engine suite (69 tests) on plain
-Node. `Tests/brc100-detect-test.mjs` additionally requires `npm i @bsv/sdk`.
+```bash
+node Tests/engine-tests.mjs
+# -> 69 passed, 0 failed
+```
+
+The full crypto-engine suite on plain Node — the same vectors the iOS app
+runs, against byte-identical engine files. CI additionally builds the app
+(`./gradlew assembleDebug`) on every push. `Tests/brc100-detect-test.mjs`
+requires `npm i @bsv/sdk`.
 
 ## License
 
