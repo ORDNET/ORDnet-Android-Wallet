@@ -34,6 +34,8 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
           key: gradle-${{ hashFiles('**/*.gradle*', 'gradle/wrapper/gradle-wrapper.properties') }}
-      # This is the job that would have caught the missing brace in Vault.kt.
+# This is the job that would have caught the missing brace in Vault.kt.
+      - name: Make gradlew executable
+        run: chmod +x gradlew
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
